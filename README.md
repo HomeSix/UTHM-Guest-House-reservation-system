@@ -91,7 +91,8 @@ javac *.java
 
 ### Execution
 ```bash
-java GuestReservationSystem
+java GuestReservationSystem FOR TERMINAL
+java GuestHouseGUI FOR GUI
 ```
 
 ### First Run
