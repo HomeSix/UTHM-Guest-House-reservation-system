@@ -1,0 +1,5 @@
+Reservation ID	Guest Name	Room No.	Check-in	Check-out	Nights	Total (RM)	Status
+RES-20260510-7404	Mavinesh Nambiar Kannan	101A	2026-05-11	2026-05-15	4	400.00	Active	
+RES-20260510-3153	Afif	101B	2026-05-11	2026-05-17	6	600.00	Active	
+RES-20260510-9260	Hafiz	301A	2026-05-11	2026-05-15	4	400.00	Rejected	
+RES-20260510-3557	mugish	301C	2026-05-11	2026-05-14	3	300.00	Completed	
