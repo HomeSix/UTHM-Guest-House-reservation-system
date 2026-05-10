@@ -3,8 +3,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
 
-// Main interface class
-
 public class GuestReservationSystem {
     private ReservationManager reservationManager;
     private Scanner scanner;
@@ -20,7 +18,6 @@ public class GuestReservationSystem {
         system.run();
     }
 
-    // Display menu
     public void run() {
         System.out.println("╔════════════════════════════════════════════════╗");
         System.out.println("║   UTHM Guest House Reservation System          ║");
@@ -34,19 +31,19 @@ public class GuestReservationSystem {
 
             switch (choice) {
                 case "1":
-                    addNewReservation();
+                    addNewReservation(); // Add New Reservation function
                     break;
                 case "2":
-                    viewAllReservations();
+                    viewAllReservations(); // View All Reservations function
                     break;
                 case "3":
-                    searchReservation();
+                    searchReservation(); // Search Reservation function
                     break;
                 case "4":
-                    removeReservation();
+                    removeReservation(); // Remove Reservation function
                     break;
                 case "5":
-                    updateReservationStatus();
+                    updateReservationStatus(); // Update Reservation Status function
                     break;
                 case "6":
                     running = false;
@@ -89,7 +86,7 @@ public class GuestReservationSystem {
         double price = Double.parseDouble(getUserInput("Enter Price Per Night (RM): "));
         int capacity = Integer.parseInt(getUserInput("Enter Room Capacity: "));
 
-        GuestHouse room = new GuestHouse(roomId, roomType, price, capacity);
+        Room room = new Room(roomId, roomType, price, capacity);
 
         // Collect reservation dates
         String checkInStr = getUserInput("Enter Check-in Date (yyyy-MM-dd): ");

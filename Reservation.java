@@ -4,18 +4,18 @@ import java.time.temporal.ChronoUnit;
 public class Reservation extends Entity {
     private String reservationId;
     private Guest guest;
-    private GuestHouse guestHouse;
+    private Room room;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
     private String status;  // "Active", "Completed", "Cancelled"
     private double totalCost;
 
-    public Reservation(String reservationId, Guest guest, GuestHouse guestHouse, 
+    public Reservation(String reservationId, Guest guest, Room room, 
                       LocalDate checkInDate, LocalDate checkOutDate) {
         super(reservationId);  // Call parent constructor with ID
         this.reservationId = reservationId;
         this.guest = guest;
-        this.guestHouse = guestHouse;
+        this.room = room;
         this.checkInDate = checkInDate;
         this.checkOutDate = checkOutDate;
         this.status = "Active";
@@ -30,8 +30,8 @@ public class Reservation extends Entity {
         return guest;
     }
 
-    public GuestHouse getGuestHouse() {
-        return guestHouse;
+    public Room getRoom() {
+        return room;
     }
 
     public LocalDate getCheckInDate() {
@@ -66,9 +66,9 @@ public class Reservation extends Entity {
 
     // calculate total cost based on number of nights and price per night
     private double calculateTotalCost() {
-        if (checkInDate != null && checkOutDate != null && guestHouse != null) {
+        if (checkInDate != null && checkOutDate != null && room != null) {
             long numberOfNights = ChronoUnit.DAYS.between(checkInDate, checkOutDate);
-            return numberOfNights * guestHouse.getPricePerNight();
+            return numberOfNights * room.getPricePerNight();
         }
         return 0.0;
     }
@@ -87,7 +87,7 @@ public class Reservation extends Entity {
         return "Reservation{" +
                 "reservationId='" + reservationId + '\'' +
                 ", guest=" + guest.getName() +
-                ", room=" + guestHouse.getRoomId() +
+                ", room=" + room.getId() +
                 ", checkIn=" + checkInDate +
                 ", checkOut=" + checkOutDate +
                 ", nights=" + getNumberOfNights() +
