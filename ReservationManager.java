@@ -6,7 +6,7 @@ import java.util.List;
 
 public class ReservationManager {
     private ArrayList<Reservation> reservations;
-    private final String DATA_FILE = "reservations.txt";
+    private final String DATA_FILE = "data/reservations.txt";
 
     // Constructor - Initialize the reservation manager and load existing reservations from file
     public ReservationManager() {
@@ -28,7 +28,7 @@ public class ReservationManager {
         }
 
         // Check if room is available for the requested dates
-        if (!isRoomAvailableForDates(reservation.getRoom().getId(), 
+        if (!isRoomAvailableForDates(reservation.getRoom().getRoomNumber(), 
                                      reservation.getCheckInDate(), 
                                      reservation.getCheckOutDate())) {
             System.out.println("Error: Room is not available for the requested dates.");
@@ -80,10 +80,10 @@ public class ReservationManager {
     }
 
     // Get reservations for a specific room
-    public List<Reservation> getReservationsByRoom(String roomId) {
+    public List<Reservation> getReservationsByRoom(String roomNumber) {
         ArrayList<Reservation> result = new ArrayList<>();
         for (Reservation res : reservations) {
-            if (res.getRoom().getId().equals(roomId)) {
+            if (res.getRoom().getRoomNumber().equals(roomNumber)) {
                 result.add(res);
             }
         }
@@ -102,6 +102,17 @@ public class ReservationManager {
     }
 
     // UPDATE OPERATION
+    public boolean updateReservationStatus(String reservationId, String newStatus) {
+        Reservation res = findReservationById(reservationId);
+        if (res != null) {
+            res.setStatus(newStatus);
+            saveToFile();
+            System.out.println("✓ Status updated to: " + newStatus);
+            return true;
+        }
+        return false;
+    }
+
     public boolean removeReservation(String reservationId) {
         Reservation toRemove = findReservationById(reservationId);
         if (toRemove != null) {
@@ -134,11 +145,11 @@ public class ReservationManager {
     }
 
     // Check if a room is available for the given dates (no overlapping active reservations)
-    private boolean isRoomAvailableForDates(String roomId, 
+    private boolean isRoomAvailableForDates(String roomNumber, 
                                            java.time.LocalDate checkInDate, 
                                            java.time.LocalDate checkOutDate) {
         for (Reservation res : reservations) {
-            if (res.getRoom().getId().equals(roomId) && 
+            if (res.getRoom().getRoomNumber().equals(roomNumber) && 
                 res.getStatus().equals("Active")) {
                 // Check for date overlap
                 if (!checkOutDate.isBefore(res.getCheckInDate()) && 
@@ -177,12 +188,12 @@ public class ReservationManager {
     private void saveToFile() {
         try (PrintWriter writer = new PrintWriter(new FileWriter(DATA_FILE))) {
             for (Reservation res : reservations) {
-                // Format: ResID|GuestID|GuestName|RoomID|CheckIn|CheckOut|Status|TotalCost
+                // Format: ResID|GuestID|GuestName|RoomNumber|CheckIn|CheckOut|Status|TotalCost
                 writer.println(
                     res.getReservationId() + "|" +
                     res.getGuest().getGuestId() + "|" +
                     res.getGuest().getName() + "|" +
-                    res.getRoom().getId() + "|" +
+                    res.getRoom().getRoomNumber() + "|" +
                     res.getCheckInDate() + "|" +
                     res.getCheckOutDate() + "|" +
                     res.getStatus() + "|" +
@@ -219,7 +230,7 @@ public class ReservationManager {
 
                     String formattedGuestId = guestId.startsWith("G") ? guestId : "G" + guestId;
                     Guest guest = new Guest(formattedGuestId, guestName, "email@example.com", "0000000000");
-                    Room room = new Room(roomId, "Standard", 100.0, 2);
+                    Room room = new Room(roomId, "Unknown", 100.0);
 
                     Reservation res = new Reservation(resId, guest, room, checkIn, checkOut);
                     res.setStatus(status);

@@ -5,11 +5,13 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import javax.sound.sampled.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GuestHouseGUI extends JFrame {
     private ReservationManager reservationManager;
@@ -17,7 +19,6 @@ public class GuestHouseGUI extends JFrame {
     private JTable reservationTable;
     private DefaultTableModel tableModel;
     private Image logoImage;
-    private Clip musicClip;
     private final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     
     private final Color PRIMARY = new Color(59, 130, 246);
@@ -39,7 +40,6 @@ public class GuestHouseGUI extends JFrame {
         loadLogo();
         initComponents();
         loadReservations();
-        playBackgroundMusic();
     }
 
     private void loadLogo() {
@@ -50,34 +50,9 @@ public class GuestHouseGUI extends JFrame {
         }
     }
 
-    private void playBackgroundMusic() {
-        new Thread(() -> {
-            try {
-                File musicFile = new File("resources/background_music.mp3");
-                if (musicFile.exists()) {
-                    AudioInputStream audioStream = AudioSystem.getAudioInputStream(musicFile);
-                    musicClip = AudioSystem.getClip();
-                    musicClip.open(audioStream);
-                    musicClip.start();
-                    musicClip.loop(Clip.LOOP_CONTINUOUSLY);
-                }
-            } catch (Exception e) {
-                System.err.println("Music error: " + e.getMessage());
-            }
-        }).start();
-    }
-
     private void initComponents() {
         setTitle("UTHM Guest House Reservation System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                if (musicClip != null) {
-                    musicClip.stop();
-                    musicClip.close();
-                }
-            }
-        });
         setSize(1300, 800);
         setLocationRelativeTo(null);
 
@@ -120,8 +95,8 @@ public class GuestHouseGUI extends JFrame {
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
         menuPanel.setBackground(BG_WHITE);
 
-        String[] menuItems = {"Dashboard", "Add Reservation", "View All", "Search", "Update Status", "Manage Rooms"};
-        String[] icons = {"◉", "+", "☰", "⌕", "↻", "◈"};
+        String[] menuItems = {"Dashboard", "Add Reservation", "View All", "Update Status", "Manage Rooms"};
+        String[] icons = {"◉", "+", "☰", "↻", "◈"};
 
         for (int i = 0; i < menuItems.length; i++) {
             final int index = i;
@@ -192,37 +167,80 @@ public class GuestHouseGUI extends JFrame {
     }
 
     private JPanel createStatsPanel() {
-        JPanel statsPanel = new JPanel();
-        statsPanel.setLayout(new GridLayout(1, 3, 20, 20));
-        statsPanel.setBackground(BG_LIGHT);
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBackground(BG_LIGHT);
+
+        JPanel reservationsSection = new JPanel();
+        reservationsSection.setLayout(new BoxLayout(reservationsSection, BoxLayout.Y_AXIS));
+        reservationsSection.setBackground(BG_LIGHT);
+        
+        JLabel reservationHeader = new JLabel("RESERVATIONS");
+        reservationHeader.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        reservationHeader.setForeground(TEXT_LIGHT);
+        reservationHeader.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        JPanel resRow = new JPanel(new GridLayout(1, 4, 8, 8));
+        resRow.setBackground(BG_LIGHT);
 
         int total = reservationManager.getTotalReservations();
         int active = reservationManager.getReservationsByStatus("Active").size();
         int completed = reservationManager.getReservationsByStatus("Completed").size();
+        int rejected = reservationManager.getReservationsByStatus("Rejected").size();
 
-        statsPanel.add(createStatCard("Total Reservations", String.valueOf(total), PRIMARY, Color.WHITE));
-        statsPanel.add(createStatCard("Active", String.valueOf(active), SUCCESS, Color.WHITE));
-        statsPanel.add(createStatCard("Completed", String.valueOf(completed), new Color(100, 116, 139), Color.WHITE));
+        resRow.add(createStatCard("Total", String.valueOf(total), PRIMARY, Color.WHITE));
+        resRow.add(createStatCard("Active", String.valueOf(active), SUCCESS, Color.WHITE));
+        resRow.add(createStatCard("Completed", String.valueOf(completed), new Color(100, 116, 139), Color.WHITE));
+        resRow.add(createStatCard("Rejected", String.valueOf(rejected), DANGER, Color.WHITE));
 
-        return statsPanel;
+        reservationsSection.add(reservationHeader);
+        reservationsSection.add(resRow);
+        
+        JPanel roomsSection = new JPanel();
+        roomsSection.setLayout(new BoxLayout(roomsSection, BoxLayout.Y_AXIS));
+        roomsSection.setBackground(BG_LIGHT);
+        roomsSection.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        
+        JLabel roomsHeader = new JLabel("AVAILABLE ROOMS");
+        roomsHeader.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        roomsHeader.setForeground(TEXT_LIGHT);
+        roomsHeader.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JPanel roomsRow = new JPanel(new GridLayout(1, 3, 8, 8));
+        roomsRow.setBackground(BG_LIGHT);
+
+        int availableSingle = roomManager.getAvailableCountByType("Single", LocalDate.now(), LocalDate.now().plusDays(1), reservationManager);
+        int availableDouble = roomManager.getAvailableCountByType("Double", LocalDate.now(), LocalDate.now().plusDays(1), reservationManager);
+        int availableSuite = roomManager.getAvailableCountByType("Suite", LocalDate.now(), LocalDate.now().plusDays(1), reservationManager);
+
+        roomsRow.add(createStatCard("Single", String.valueOf(availableSingle), new Color(139, 92, 246), Color.WHITE));
+        roomsRow.add(createStatCard("Double", String.valueOf(availableDouble), new Color(249, 115, 22), Color.WHITE));
+        roomsRow.add(createStatCard("Suite", String.valueOf(availableSuite), new Color(16, 185, 129), Color.WHITE));
+
+        roomsSection.add(roomsHeader);
+        roomsSection.add(roomsRow);
+
+        mainPanel.add(reservationsSection);
+        mainPanel.add(roomsSection);
+
+        return mainPanel;
     }
 
     private JPanel createStatCard(String title, String value, Color bgColor, Color textColor) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(bgColor);
-        card.setPreferredSize(new Dimension(280, 140));
-        card.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
+        card.setPreferredSize(new Dimension(280, 120));
+        card.setBorder(BorderFactory.createEmptyBorder(15, 30, 15, 30));
         card.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 40));
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
         valueLabel.setForeground(textColor);
         valueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         titleLabel.setForeground(new Color(255, 255, 255, 180));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -245,9 +263,6 @@ public class GuestHouseGUI extends JFrame {
                 break;
             case "View All":
                 showAllReservations();
-                break;
-            case "Search":
-                showSearchDialog();
                 break;
             case "Update Status":
                 showUpdateStatusDialog();
@@ -346,6 +361,11 @@ public class GuestHouseGUI extends JFrame {
             }
         });
 
+        JLabel availabilityLabel = new JLabel();
+        availabilityLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        availabilityLabel.setForeground(TEXT_LIGHT);
+        availabilityLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JTextField priceField = createTextField("0.00");
         priceField.setEditable(false);
         priceField.setBackground(new Color(245, 245, 245));
@@ -384,15 +404,20 @@ public class GuestHouseGUI extends JFrame {
             if (selected != null) {
                 updateTotalCostFromSpinner(checkInSpinner, checkOutSpinner, selected.getPricePerNight(), totalCostField);
             }
+            updateRoomAvailability(roomCombo, availabilityLabel, checkInSpinner, checkOutSpinner);
         };
         checkInSpinner.addChangeListener(costListener);
         checkOutSpinner.addChangeListener(costListener);
 
-        JPanel resInfo = new JPanel(new GridLayout(5, 2, 10, 10));
+        updateRoomAvailability(roomCombo, availabilityLabel, checkInSpinner, checkOutSpinner);
+
+        JPanel resInfo = new JPanel(new GridLayout(6, 2, 10, 10));
         resInfo.setBackground(BG_WHITE);
 
         resInfo.add(createLabel("Select Room:"));
         resInfo.add(roomCombo);
+        resInfo.add(createLabel(""));
+        resInfo.add(availabilityLabel);
         resInfo.add(createLabel("Price/Night (RM):"));
         resInfo.add(priceField);
         resInfo.add(createLabel("Check-in Date:"));
@@ -541,6 +566,54 @@ public class GuestHouseGUI extends JFrame {
         }
     }
 
+    private void updateRoomAvailability(JComboBox<Room> roomCombo, JLabel availabilityLabel, JSpinner checkInSpinner, JSpinner checkOutSpinner) {
+        try {
+            LocalDate checkIn = ((java.util.Date) checkInSpinner.getValue()).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            LocalDate checkOut = ((java.util.Date) checkOutSpinner.getValue()).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            
+            if (checkOut.isBefore(checkIn) || checkOut.isEqual(checkIn)) {
+                availabilityLabel.setText("Invalid dates selected");
+                return;
+            }
+
+            List<Room> availableRooms = roomManager.getAvailableRoomsForDates(checkIn, checkOut, reservationManager);
+            Map<String, Integer> availability = new java.util.HashMap<>();
+            
+            for (Room room : availableRooms) {
+                String type = room.getRoomType();
+                availability.put(type, availability.getOrDefault(type, 0) + 1);
+            }
+
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, Integer> entry : availability.entrySet()) {
+                int total = roomManager.getTotalCountByType(entry.getKey());
+                int available = entry.getValue();
+                if (available == 0) {
+                    sb.append(entry.getKey() + ": FULL, ");
+                } else {
+                    sb.append(entry.getKey() + ": " + available + "/" + total + " left, ");
+                }
+            }
+            
+            String text = sb.toString();
+            if (!text.isEmpty()) {
+                text = text.substring(0, text.length() - 2);
+            }
+            availabilityLabel.setText(text);
+            
+            Object selected = roomCombo.getSelectedItem();
+            roomCombo.removeAllItems();
+            roomCombo.addItem(null);
+            for (Room room : availableRooms) {
+                roomCombo.addItem(room);
+            }
+            roomCombo.setSelectedItem(selected);
+
+        } catch (Exception e) {
+            availabilityLabel.setText("");
+        }
+    }
+
     private void showAllReservations() {
         getContentPane().removeAll();
         setLayout(new BorderLayout());
@@ -559,26 +632,72 @@ public class GuestHouseGUI extends JFrame {
         headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
         headerLabel.setForeground(TEXT_DARK);
 
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        searchPanel.setBackground(BG_LIGHT);
+
+        JComboBox<String> searchTypeCombo = new JComboBox<>(new String[]{"All", "By Reservation ID", "By Guest Name", "By Room Number", "By Status"});
+        searchTypeCombo.setBackground(BG_WHITE);
+        searchTypeCombo.setForeground(TEXT_DARK);
+        searchTypeCombo.setPreferredSize(new Dimension(150, 35));
+
+        JTextField searchField = createTextField("Search...");
+        searchField.setPreferredSize(new Dimension(180, 35));
+        searchField.addActionListener(e -> performSearch(searchTypeCombo, searchField));
+
+        JButton searchBtn = createActionButton("Search", PRIMARY);
+        searchBtn.setPreferredSize(new Dimension(90, 35));
+        searchBtn.addActionListener(e -> performSearch(searchTypeCombo, searchField));
+
+        JButton clearBtn = createActionButton("Clear", new Color(100, 116, 139));
+        clearBtn.setPreferredSize(new Dimension(90, 35));
+        clearBtn.addActionListener(e -> {
+            searchTypeCombo.setSelectedIndex(0);
+            searchField.setText("");
+            loadReservations();
+        });
+
+        searchPanel.add(searchTypeCombo);
+        searchPanel.add(searchField);
+        searchPanel.add(searchBtn);
+        searchPanel.add(clearBtn);
+
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(BG_LIGHT);
 
         JButton refreshBtn = createActionButton("Refresh", PRIMARY);
-        JButton deleteBtn = createActionButton("Delete Selected", DANGER);
-
-        refreshBtn.addActionListener(e -> loadReservations());
-        deleteBtn.addActionListener(e -> deleteSelectedReservation());
+        refreshBtn.addActionListener(e -> {
+            searchTypeCombo.setSelectedIndex(0);
+            searchField.setText("");
+            loadReservations();
+        });
 
         buttonPanel.add(refreshBtn);
-        buttonPanel.add(deleteBtn);
+        
+        JButton deleteSelectedBtn = createActionButton("Delete Selected", DANGER);
+        deleteSelectedBtn.setPreferredSize(new Dimension(130, 35));
+        deleteSelectedBtn.addActionListener(e -> deleteSelectedReservations());
+        
+        JButton exportBtn = createActionButton("Export Excel", SUCCESS);
+        exportBtn.setPreferredSize(new Dimension(120, 35));
+        exportBtn.addActionListener(e -> exportToExcel());
 
-        header.add(headerLabel, BorderLayout.WEST);
+        buttonPanel.add(deleteSelectedBtn);
+        buttonPanel.add(exportBtn);
+
+        header.add(headerLabel, BorderLayout.NORTH);
+        header.add(searchPanel, BorderLayout.CENTER);
         header.add(buttonPanel, BorderLayout.EAST);
 
-        String[] columns = {"Reservation ID", "Guest Name", "Room", "Check-in", "Check-out", "Nights", "Total (RM)", "Status"};
+        String[] columns = {"", "Reservation ID", "Guest Name", "Room No.", "Check-in", "Check-out", "Nights", "Total (RM)", "Status"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false;
+                return column == 0;
+            }
+
+            @Override
+            public Class<?> getColumnClass(int column) {
+                return column == 0 ? Boolean.class : String.class;
             }
         };
 
@@ -593,6 +712,8 @@ public class GuestHouseGUI extends JFrame {
         reservationTable.setGridColor(BORDER);
         reservationTable.setSelectionBackground(new Color(219, 234, 254));
         reservationTable.setSelectionForeground(TEXT_DARK);
+        reservationTable.getColumnModel().getColumn(0).setPreferredWidth(40);
+        reservationTable.getColumnModel().getColumn(0).setMaxWidth(40);
 
         JScrollPane scrollPane = new JScrollPane(reservationTable);
         scrollPane.getViewport().setBackground(BG_WHITE);
@@ -607,15 +728,118 @@ public class GuestHouseGUI extends JFrame {
         repaint();
     }
 
+    private void deleteSelectedReservations() {
+        List<String> toDelete = new ArrayList<>();
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            Boolean selected = (Boolean) tableModel.getValueAt(i, 0);
+            if (selected != null && selected) {
+                String resId = (String) tableModel.getValueAt(i, 1);
+                toDelete.add(resId);
+            }
+        }
+
+        if (toDelete.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please select at least one reservation to delete.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete " + toDelete.size() + " reservation(s)?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            for (String resId : toDelete) {
+                reservationManager.removeReservation(resId);
+            }
+            loadReservations();
+            JOptionPane.showMessageDialog(this, toDelete.size() + " reservation(s) deleted successfully!");
+        }
+    }
+
+    private void exportToExcel() {
+        try {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Save Excel File");
+            fileChooser.setSelectedFile(new java.io.File("reservations_export.xls"));
+            int userSelection = fileChooser.showSaveDialog(this);
+
+            if (userSelection == JFileChooser.APPROVE_OPTION) {
+                java.io.File file = fileChooser.getSelectedFile();
+                java.io.PrintWriter writer = new java.io.PrintWriter(file);
+                
+                writer.print("Reservation ID\tGuest Name\tRoom No.\tCheck-in\tCheck-out\tNights\tTotal (RM)\tStatus\n");
+                
+                for (int i = 0; i < tableModel.getRowCount(); i++) {
+                    for (int j = 1; j < tableModel.getColumnCount(); j++) {
+                        writer.print(tableModel.getValueAt(i, j) + "\t");
+                    }
+                    writer.println();
+                }
+                
+                writer.close();
+                JOptionPane.showMessageDialog(this, "Exported to Excel successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error exporting: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void performSearch(JComboBox<String> searchTypeCombo, JTextField searchField) {
+        String type = (String) searchTypeCombo.getSelectedItem();
+        String query = searchField.getText().trim();
+
+        tableModel.setRowCount(0);
+
+        if (type.equals("All") || query.isEmpty()) {
+            loadReservations();
+            return;
+        }
+
+        List<Reservation> results = new ArrayList<>();
+
+        switch (type) {
+            case "By Reservation ID":
+                Reservation r = reservationManager.findReservationById(query);
+                if (r != null) results.add(r);
+                break;
+            case "By Guest Name":
+                results = reservationManager.getReservationsByGuestName(query);
+                break;
+            case "By Room Number":
+                results = reservationManager.getReservationsByRoom(query);
+                break;
+            case "By Status":
+                results = reservationManager.getReservationsByStatus(query);
+                break;
+        }
+
+        for (Reservation res : results) {
+            Object[] row = {
+                false,
+                res.getReservationId(),
+                res.getGuest().getName(),
+                res.getRoom().getRoomNumber(),
+                res.getCheckInDate(),
+                res.getCheckOutDate(),
+                res.getNumberOfNights(),
+                String.format("%.2f", res.getTotalCost()),
+                res.getStatus()
+            };
+            tableModel.addRow(row);
+        }
+    }
+
     private void loadReservations() {
         if (tableModel != null) {
             tableModel.setRowCount(0);
             List<Reservation> reservations = reservationManager.getAllReservations();
             for (Reservation res : reservations) {
+                String roomNumber = res.getRoom().getRoomNumber();
+                Room actualRoom = roomManager.findRoomByNumber(roomNumber);
+                String displayRoom = actualRoom != null ? actualRoom.getRoomNumber() : roomNumber;
+                
                 Object[] row = {
+                    false,
                     res.getReservationId(),
                     res.getGuest().getName(),
-                    res.getRoom().getId(),
+                    displayRoom,
                     res.getCheckInDate(),
                     res.getCheckOutDate(),
                     res.getNumberOfNights(),
@@ -695,7 +919,10 @@ public class GuestHouseGUI extends JFrame {
                 case "By Reservation ID":
                     Reservation r = reservationManager.findReservationById(query);
                     if (r != null) {
-                        resultLabel.setText("<html>Found: " + r.getReservationId() + "<br>" + r.getGuest().getName() + " | " + r.getRoom().getId() + " | " + r.getStatus() + "</html>");
+                        String roomNum = r.getRoom().getRoomNumber();
+                        Room actualRoom = roomManager.findRoomByNumber(roomNum);
+                        String displayRoom = actualRoom != null ? actualRoom.getRoomNumber() : roomNum;
+                        resultLabel.setText("<html>Found: " + r.getReservationId() + "<br>" + r.getGuest().getName() + " | " + displayRoom + " | " + r.getStatus() + "</html>");
                     } else {
                         resultLabel.setText("No reservation found.");
                     }
@@ -783,7 +1010,7 @@ public class GuestHouseGUI extends JFrame {
         JLabel statusLabel = new JLabel("New Status:");
         statusLabel.setForeground(TEXT_DARK);
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"Active", "Completed", "Cancelled"});
+        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"Active", "Completed", "Cancelled", "Rejected"});
         statusCombo.setBackground(BG_WHITE);
         statusCombo.setForeground(TEXT_DARK);
         statusCombo.setMaximumSize(new Dimension(350, 38));
@@ -810,7 +1037,7 @@ public class GuestHouseGUI extends JFrame {
 
             Reservation res = reservationManager.findReservationById(resId);
             if (res != null) {
-                res.setStatus(newStatus);
+                reservationManager.updateReservationStatus(resId, newStatus);
                 resultLabel.setForeground(SUCCESS);
                 resultLabel.setText("Status updated to: " + newStatus);
             } else {
@@ -842,7 +1069,7 @@ public class GuestHouseGUI extends JFrame {
 
     private void showManageRoomsDialog() {
         JDialog dialog = new JDialog(this, "Manage Rooms", true);
-        dialog.setSize(700, 500);
+        dialog.setSize(750, 600);
         dialog.setLocationRelativeTo(this);
         dialog.getContentPane().setBackground(BG_WHITE);
 
@@ -856,7 +1083,7 @@ public class GuestHouseGUI extends JFrame {
         title.setForeground(TEXT_DARK);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        String[] columns = {"Room ID", "Room Type", "Price/Night (RM)", "Capacity", "Status"};
+        String[] columns = {"Room Number", "Room Type", "Price/Night (RM)", "Status"};
         DefaultTableModel tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -894,8 +1121,8 @@ public class GuestHouseGUI extends JFrame {
         editBtn.addActionListener(e -> {
             int selected = roomTable.getSelectedRow();
             if (selected >= 0) {
-                String roomId = (String) tableModel.getValueAt(selected, 0);
-                showEditRoomDialog(dialog, roomId, tableModel);
+                String roomNumber = (String) tableModel.getValueAt(selected, 0);
+                showEditRoomDialog(dialog, roomNumber, tableModel);
             } else {
                 JOptionPane.showMessageDialog(dialog, "Please select a room to edit.", "No Selection", JOptionPane.WARNING_MESSAGE);
             }
@@ -903,15 +1130,12 @@ public class GuestHouseGUI extends JFrame {
         deleteBtn.addActionListener(e -> {
             int selected = roomTable.getSelectedRow();
             if (selected >= 0) {
-                String roomId = (String) tableModel.getValueAt(selected, 0);
-                int confirm = JOptionPane.showConfirmDialog(dialog, "Delete room " + roomId + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                String roomNumber = (String) tableModel.getValueAt(selected, 0);
+                int confirm = JOptionPane.showConfirmDialog(dialog, "Delete room " + roomNumber + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    Room room = roomManager.findRoomById(roomId);
-                    if (room != null) {
-                        roomManager.getAllRooms().remove(room);
-                        loadRoomTable(tableModel);
-                        JOptionPane.showMessageDialog(dialog, "Room deleted successfully!");
-                    }
+                    roomManager.removeRoom(roomNumber);
+                    loadRoomTable(tableModel);
+                    JOptionPane.showMessageDialog(dialog, "Room deleted successfully!");
                 }
             } else {
                 JOptionPane.showMessageDialog(dialog, "Please select a room to delete.", "No Selection", JOptionPane.WARNING_MESSAGE);
@@ -940,10 +1164,9 @@ public class GuestHouseGUI extends JFrame {
         tableModel.setRowCount(0);
         for (Room room : roomManager.getAllRooms()) {
             Object[] row = {
-                room.getId(),
+                room.getRoomNumber(),
                 room.getRoomType(),
                 String.format("%.2f", room.getPricePerNight()),
-                room.getCapacity(),
                 room.getAvailabilityStatus()
             };
             tableModel.addRow(row);
@@ -952,7 +1175,7 @@ public class GuestHouseGUI extends JFrame {
 
     private void showAddRoomDialog(JDialog parent, DefaultTableModel tableModel) {
         JDialog dialog = new JDialog(parent, "Add New Room", true);
-        dialog.setSize(400, 350);
+        dialog.setSize(450, 420);
         dialog.setLocationRelativeTo(parent);
         dialog.getContentPane().setBackground(BG_WHITE);
 
@@ -966,25 +1189,22 @@ public class GuestHouseGUI extends JFrame {
         title.setForeground(TEXT_DARK);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel form = new JPanel(new GridLayout(5, 2, 10, 10));
+        JPanel form = new JPanel(new GridLayout(4, 2, 10, 10));
         form.setBackground(BG_WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
 
-        String nextRoomId = generateNextRoomId();
-        JTextField roomIdField = createTextField(nextRoomId);
+        JTextField roomNumberField = createTextField("");
         JComboBox<String> roomTypeCombo = new JComboBox<>(new String[]{"Single", "Double", "Suite"});
         roomTypeCombo.setBackground(BG_WHITE);
         roomTypeCombo.setForeground(TEXT_DARK);
         JTextField priceField = createTextField("100.00");
-        JTextField capacityField = createTextField("2");
         JCheckBox availableCheck = new JCheckBox("Available", true);
         availableCheck.setBackground(BG_WHITE);
         availableCheck.setForeground(TEXT_DARK);
 
-        addFormRow(form, "Room ID:", roomIdField);
+        addFormRow(form, "Room Number:", roomNumberField);
         addFormRow(form, "Room Type:", roomTypeCombo);
         addFormRow(form, "Price (RM):", priceField);
-        addFormRow(form, "Capacity:", capacityField);
         addFormRow(form, "Status:", availableCheck);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
@@ -995,23 +1215,22 @@ public class GuestHouseGUI extends JFrame {
 
         saveBtn.addActionListener(e -> {
             try {
-                String roomId = roomIdField.getText();
+                String roomNumber = roomNumberField.getText().trim();
                 String roomType = (String) roomTypeCombo.getSelectedItem();
                 double price = Double.parseDouble(priceField.getText());
-                int capacity = Integer.parseInt(capacityField.getText());
                 boolean available = availableCheck.isSelected();
 
-                if (roomId.isEmpty()) {
-                    JOptionPane.showMessageDialog(dialog, "Room ID cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                if (roomNumber.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialog, "Please enter room number", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
-                if (roomManager.findRoomById(roomId) != null) {
-                    JOptionPane.showMessageDialog(dialog, "Room ID already exists.", "Error", JOptionPane.ERROR_MESSAGE);
+                if (roomManager.findRoomByNumber(roomNumber) != null) {
+                    JOptionPane.showMessageDialog(dialog, "Room number already exists.", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
-                Room newRoom = new Room(roomId, roomType, price, capacity);
+                Room newRoom = new Room(roomNumber, roomType, price);
                 newRoom.setAvailable(available);
                 roomManager.addRoom(newRoom);
                 loadRoomTable(tableModel);
@@ -1035,12 +1254,12 @@ public class GuestHouseGUI extends JFrame {
         dialog.setVisible(true);
     }
 
-    private void showEditRoomDialog(JDialog parent, String roomId, DefaultTableModel tableModel) {
-        Room room = roomManager.findRoomById(roomId);
+    private void showEditRoomDialog(JDialog parent, String roomNumber, DefaultTableModel tableModel) {
+        Room room = roomManager.findRoomByNumber(roomNumber);
         if (room == null) return;
 
         JDialog dialog = new JDialog(parent, "Edit Room", true);
-        dialog.setSize(400, 350);
+        dialog.setSize(450, 400);
         dialog.setLocationRelativeTo(parent);
         dialog.getContentPane().setBackground(BG_WHITE);
 
@@ -1054,13 +1273,13 @@ public class GuestHouseGUI extends JFrame {
         title.setForeground(TEXT_DARK);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel form = new JPanel(new GridLayout(5, 2, 10, 10));
+        JPanel form = new JPanel(new GridLayout(4, 2, 10, 10));
         form.setBackground(BG_WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
 
-        JTextField roomIdField = createTextField(room.getId());
-        roomIdField.setEditable(false);
-        roomIdField.setBackground(new Color(240, 240, 240));
+        JTextField roomNumberField = createTextField(room.getRoomNumber());
+        roomNumberField.setEditable(false);
+        roomNumberField.setBackground(new Color(240, 240, 240));
 
         JComboBox<String> roomTypeCombo = new JComboBox<>(new String[]{"Single", "Double", "Suite"});
         roomTypeCombo.setBackground(BG_WHITE);
@@ -1068,15 +1287,13 @@ public class GuestHouseGUI extends JFrame {
         roomTypeCombo.setSelectedItem(room.getRoomType());
 
         JTextField priceField = createTextField(String.valueOf(room.getPricePerNight()));
-        JTextField capacityField = createTextField(String.valueOf(room.getCapacity()));
         JCheckBox availableCheck = new JCheckBox("Available", room.isAvailable());
         availableCheck.setBackground(BG_WHITE);
         availableCheck.setForeground(TEXT_DARK);
 
-        addFormRow(form, "Room ID:", roomIdField);
+        addFormRow(form, "Room Number:", roomNumberField);
         addFormRow(form, "Room Type:", roomTypeCombo);
         addFormRow(form, "Price (RM):", priceField);
-        addFormRow(form, "Capacity:", capacityField);
         addFormRow(form, "Status:", availableCheck);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
@@ -1089,14 +1306,13 @@ public class GuestHouseGUI extends JFrame {
             try {
                 String roomType = (String) roomTypeCombo.getSelectedItem();
                 double price = Double.parseDouble(priceField.getText());
-                int capacity = Integer.parseInt(capacityField.getText());
                 boolean available = availableCheck.isSelected();
 
                 room.setRoomType(roomType);
                 room.setPricePerNight(price);
-                room.setCapacity(capacity);
                 room.setAvailable(available);
-
+                
+                roomManager.updateRoom(room);
                 loadRoomTable(tableModel);
                 JOptionPane.showMessageDialog(dialog, "Room updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
@@ -1116,22 +1332,6 @@ public class GuestHouseGUI extends JFrame {
 
         dialog.add(container);
         dialog.setVisible(true);
-    }
-
-    private String generateNextRoomId() {
-        int maxNum = 0;
-        for (Room room : roomManager.getAllRooms()) {
-            String id = room.getId();
-            if (id != null && id.length() > 1) {
-                try {
-                    int num = Integer.parseInt(id.substring(1));
-                    if (num > maxNum) maxNum = num;
-                } catch (NumberFormatException e) {
-                    // ignore
-                }
-            }
-        }
-        return "R" + String.format("%03d", maxNum + 1);
     }
 
     private void addFormRow(JPanel panel, String label, JComponent field) {

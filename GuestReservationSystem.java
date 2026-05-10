@@ -83,10 +83,10 @@ public class GuestReservationSystem {
         // Collect room information
         String roomId = getUserInput("Enter Room ID: ");
         String roomType = getUserInput("Enter Room Type (Single/Double/Suite): ");
+        String roomNumber = getUserInput("Enter Room Number (e.g., 101A): ");
         double price = Double.parseDouble(getUserInput("Enter Price Per Night (RM): "));
-        int capacity = Integer.parseInt(getUserInput("Enter Room Capacity: "));
 
-        Room room = new Room(roomId, roomType, price, capacity);
+        Room room = new Room(roomNumber, roomType, price);
 
         // Collect reservation dates
         String checkInStr = getUserInput("Enter Check-in Date (yyyy-MM-dd): ");

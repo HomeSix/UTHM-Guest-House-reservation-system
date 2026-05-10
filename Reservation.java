@@ -87,7 +87,7 @@ public class Reservation extends Entity {
         return "Reservation{" +
                 "reservationId='" + reservationId + '\'' +
                 ", guest=" + guest.getName() +
-                ", room=" + room.getId() +
+                ", room=" + room.getRoomNumber() +
                 ", checkIn=" + checkInDate +
                 ", checkOut=" + checkOutDate +
                 ", nights=" + getNumberOfNights() +

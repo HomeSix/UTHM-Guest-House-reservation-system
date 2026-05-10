@@ -1,15 +1,22 @@
-public class Room extends Entity {
+public class Room {
+    private String roomNumber;
     private String roomType;
     private double pricePerNight;
-    private int capacity;
     private boolean isAvailable;
 
-    public Room(String roomId, String roomType, double pricePerNight, int capacity) {
-        super(roomId);
+    public Room(String roomNumber, String roomType, double pricePerNight) {
+        this.roomNumber = roomNumber;
         this.roomType = roomType;
         this.pricePerNight = pricePerNight;
-        this.capacity = capacity;
         this.isAvailable = true;
+    }
+
+    public String getId() {
+        return roomNumber;
+    }
+
+    public String getRoomNumber() {
+        return roomNumber;
     }
 
     public String getRoomType() {
@@ -20,10 +27,6 @@ public class Room extends Entity {
         return pricePerNight;
     }
 
-    public int getCapacity() {
-        return capacity;
-    }
-
     public boolean isAvailable() {
         return isAvailable;
     }
@@ -32,16 +35,16 @@ public class Room extends Entity {
         this.roomType = roomType;
     }
 
+    public void setRoomNumber(String roomNumber) {
+        this.roomNumber = roomNumber;
+    }
+
     public void setPricePerNight(double pricePerNight) {
         this.pricePerNight = pricePerNight;
     }
 
     public void setAvailable(boolean available) {
         this.isAvailable = available;
-    }
-
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
     }
 
     public String getAvailabilityStatus() {
@@ -54,6 +57,6 @@ public class Room extends Entity {
     }
 
     public String toDisplayString() {
-        return getId() + " (" + roomType + ")";
+        return roomNumber + " (" + roomType + ")";
     }
 }
