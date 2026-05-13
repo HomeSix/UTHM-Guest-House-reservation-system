@@ -5,11 +5,13 @@ import java.util.Scanner;
 
 public class GuestReservationSystem {
     private ReservationManager reservationManager;
+    private RoomManager roomManager;
     private Scanner scanner;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public GuestReservationSystem() {
         this.reservationManager = new ReservationManager();
+        this.roomManager = new RoomManager();
         this.scanner = new Scanner(System.in);
     }
 
@@ -27,25 +29,28 @@ public class GuestReservationSystem {
         boolean running = true;
         while (running) {
             displayMainMenu();
-            String choice = getUserInput("Enter your choice (1-6): ");
+            String choice = getUserInput("Enter your choice (1-7): ");
 
             switch (choice) {
                 case "1":
-                    addNewReservation(); // Add New Reservation function
+                    addNewReservation();
                     break;
                 case "2":
-                    viewAllReservations(); // View All Reservations function
+                    viewAllReservations();
                     break;
                 case "3":
-                    searchReservation(); // Search Reservation function
+                    searchReservation();
                     break;
                 case "4":
-                    removeReservation(); // Remove Reservation function
+                    removeReservation();
                     break;
                 case "5":
-                    updateReservationStatus(); // Update Reservation Status function
+                    updateReservationStatus();
                     break;
                 case "6":
+                    manageRooms();
+                    break;
+                case "7":
                     running = false;
                     System.out.println("\nThank you for using UTHM Guest House Reservation System!");
                     break;
@@ -64,7 +69,8 @@ public class GuestReservationSystem {
         System.out.println("3. Search Reservation");
         System.out.println("4. Remove Reservation");
         System.out.println("5. Update Reservation Status");
-        System.out.println("6. Exit");
+        System.out.println("6. Manage Rooms");
+        System.out.println("7. Exit");
         System.out.println("===============================");
     }
 
@@ -232,6 +238,149 @@ public class GuestReservationSystem {
             System.out.println("✓ Status updated successfully!");
         } else {
             System.out.println("❌ Reservation not found.");
+        }
+    }
+
+    private void manageRooms() {
+        boolean running = true;
+        while (running) {
+            System.out.println("\n========== MANAGE ROOMS ==========");
+            System.out.println("1. View All Rooms");
+            System.out.println("2. Add New Room");
+            System.out.println("3. Edit Room");
+            System.out.println("4. Delete Room");
+            System.out.println("5. Back to Main Menu");
+            System.out.println("===================================");
+            String choice = getUserInput("Enter your choice (1-5): ");
+
+            switch (choice) {
+                case "1":
+                    viewAllRooms();
+                    break;
+                case "2":
+                    addNewRoom();
+                    break;
+                case "3":
+                    editRoom();
+                    break;
+                case "4":
+                    deleteRoom();
+                    break;
+                case "5":
+                    running = false;
+                    break;
+                default:
+                    System.out.println("❌ Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    private void viewAllRooms() {
+        System.out.println("\n========== ALL ROOMS ==========");
+        System.out.printf("%-15s %-12s %-15s %-15s%n", "Room Number", "Room Type", "Price/Night (RM)", "Status");
+        System.out.println("------------------------------------------------------------");
+        
+        List<Room> rooms = roomManager.getAllRooms();
+        if (rooms.isEmpty()) {
+            System.out.println("No rooms found.");
+        } else {
+            for (Room room : rooms) {
+                System.out.printf("%-15s %-12s %-15.2f %-15s%n",
+                    room.getRoomNumber(),
+                    room.getRoomType(),
+                    room.getPricePerNight(),
+                    room.getAvailabilityStatus()
+                );
+            }
+        }
+        System.out.println("------------------------------------------------------------");
+        System.out.println("Total Rooms: " + rooms.size());
+    }
+
+    private void addNewRoom() {
+        System.out.println("\n========== ADD NEW ROOM ==========");
+        
+        String roomNumber = getUserInput("Enter Room Number: ");
+        if (roomNumber.isEmpty()) {
+            System.out.println("❌ Room number cannot be empty.");
+            return;
+        }
+        if (roomManager.findRoomByNumber(roomNumber) != null) {
+            System.out.println("❌ Room already exists!");
+            return;
+        }
+
+        System.out.println("Room types: Single, Double, Suite");
+        String roomType = getUserInput("Enter Room Type: ");
+        
+        double price;
+        try {
+            price = Double.parseDouble(getUserInput("Enter Price Per Night (RM): "));
+        } catch (NumberFormatException e) {
+            System.out.println("❌ Invalid price format.");
+            return;
+        }
+
+        Room room = new Room(roomNumber, roomType, price);
+        roomManager.addRoom(room);
+        System.out.println("✓ Room added successfully!");
+    }
+
+    private void editRoom() {
+        System.out.println("\n========== EDIT ROOM ==========");
+        String roomNumber = getUserInput("Enter Room Number to edit: ");
+        if (roomNumber.isEmpty()) {
+            System.out.println("❌ Room number cannot be empty.");
+            return;
+        }
+        
+        Room room = roomManager.findRoomByNumber(roomNumber);
+        if (room == null) {
+            System.out.println("❌ Room not found.");
+            return;
+        }
+
+        System.out.println("Current details:");
+        System.out.printf("  Room Type: %s%n", room.getRoomType());
+        System.out.printf("  Price/Night: RM%.2f%n", room.getPricePerNight());
+        System.out.printf("  Status: %s%n", room.getAvailabilityStatus());
+
+        String newType = getUserInput("Enter new Room Type (press Enter to keep current): ");
+        if (!newType.isEmpty()) {
+            room.setRoomType(newType);
+        }
+
+        String priceStr = getUserInput("Enter new Price (press Enter to keep current): ");
+        if (!priceStr.isEmpty()) {
+            try {
+                room.setPricePerNight(Double.parseDouble(priceStr));
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Invalid price format.");
+                return;
+            }
+        }
+
+        String availStr = getUserInput("Enter availability (Available/Not Available, press Enter to keep current): ");
+        if (!availStr.isEmpty()) {
+            room.setAvailable(availStr.equalsIgnoreCase("Available"));
+        }
+
+        roomManager.updateRoom(room);
+        System.out.println("✓ Room updated successfully!");
+    }
+
+    private void deleteRoom() {
+        System.out.println("\n========== DELETE ROOM ==========");
+        String roomNumber = getUserInput("Enter Room Number to delete: ");
+        if (roomNumber.isEmpty()) {
+            System.out.println("❌ Room number cannot be empty.");
+            return;
+        }
+        
+        if (roomManager.removeRoom(roomNumber)) {
+            System.out.println("✓ Room deleted successfully!");
+        } else {
+            System.out.println("❌ Room not found.");
         }
     }
 

@@ -129,7 +129,13 @@ public class RoomManager {
         return false;
     }
 
-    public void updateRoom(Room room) {
+    public void updateRoom(Room updatedRoom) {
+        for (int i = 0; i < rooms.size(); i++) {
+            if (rooms.get(i).getRoomNumber().equals(updatedRoom.getRoomNumber())) {
+                rooms.set(i, updatedRoom);
+                break;
+            }
+        }
         saveToFile();
     }
 
