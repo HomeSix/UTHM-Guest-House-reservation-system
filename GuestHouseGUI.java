@@ -20,6 +20,7 @@ public class GuestHouseGUI extends JFrame {
     private DefaultTableModel tableModel;
     private Image logoImage;
     private final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private String loggedInUser;
     
     private final Color PRIMARY = new Color(59, 130, 246);
     private final Color SUCCESS = new Color(34, 197, 94);
@@ -31,15 +32,25 @@ public class GuestHouseGUI extends JFrame {
     private final Color BORDER = new Color(226, 232, 240);
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new GuestHouseGUI().setVisible(true));
+       // SwingUtilities.invokeLater(() -> new GuestHouseGUI().setVisible(true));
     }
 
-    public GuestHouseGUI() {
+      public GuestHouseGUI(String fullName) {
+        this.loggedInUser = fullName;
         this.reservationManager = new ReservationManager();
         this.roomManager = new RoomManager();
         loadLogo();
         initComponents();
         loadReservations();
+    }
+    //For Dev Testing 
+     public GuestHouseGUI() {
+        // this.reservationManager = new ReservationManager();
+        // this.roomManager = new RoomManager();
+        // loadLogo();
+        // initComponents();
+        // loadReservations();
+        this("Developer");
     }
 
     private void loadLogo() {
@@ -91,6 +102,11 @@ public class GuestHouseGUI extends JFrame {
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         title.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
 
+        JLabel welcomeLabel = new JLabel("Welcome, " + loggedInUser + "!");
+        welcomeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        welcomeLabel.setForeground(TEXT_LIGHT);
+        welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        sidebar.add(welcomeLabel); // add after the title label
         JPanel menuPanel = new JPanel();
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
         menuPanel.setBackground(BG_WHITE);
@@ -112,14 +128,31 @@ public class GuestHouseGUI extends JFrame {
         spacer.setBackground(BG_WHITE);
         spacer.add(Box.createVerticalGlue());
 
-        JButton exitBtn = createMenuButton("✕  Exit");
-        exitBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        exitBtn.addActionListener(e -> System.exit(0));
+        // JButton exitBtn = createMenuButton("✕  Exit");
+        // exitBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // exitBtn.addActionListener(e -> System.exit(0));
 
+        // In setupSidebar(), before the exitBtn section
+JButton logoutBtn = createMenuButton("⎋  Logout");
+logoutBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+logoutBtn.addActionListener(e -> {
+    int confirm = JOptionPane.showConfirmDialog(
+        this, "Are you sure you want to logout?",
+        "Logout", JOptionPane.YES_NO_OPTION
+    );
+    if (confirm == JOptionPane.YES_OPTION) {
+        dispose();                          // close main window
+        new LoginPage().setVisible(true);   // go back to login
+    }
+});
+
+sidebar.add(logoutBtn);
+// sidebar.add(exitBtn); // already exists
         sidebar.add(title);
         sidebar.add(menuPanel);
         sidebar.add(spacer);
-        sidebar.add(exitBtn);
+        // sidebar.add(exitBtn);
+        sidebar.add(logoutBtn);
 
         add(sidebar, BorderLayout.WEST);
     }

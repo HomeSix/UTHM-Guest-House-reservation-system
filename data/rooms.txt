@@ -2,11 +2,11 @@
 101B|Single|100.0|true
 102A|Single|100.0|true
 102B|Single|100.0|true
-201A|Double|150.0|true
+201A|Double|150.0|false
 201B|Double|150.0|true
 202A|Double|150.0|true
 202B|Double|150.0|true
 301A|Suite|250.0|true
 301B|Suite|250.0|true
-301C|Suite|250.0|true
 301D|Suite|250.0|false
+301C|Suite|250.0|false
