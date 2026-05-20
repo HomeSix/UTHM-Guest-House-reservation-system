@@ -92,7 +92,8 @@ javac *.java
 ### Execution
 ```bash
 java GuestReservationSystem FOR TERMINAL
-java GuestHouseGUI FOR GUI or is it java Main ?
+# java GuestHouseGUI FOR GUI 
+java Main FOR GUI
 ```
 
 ### First Run
