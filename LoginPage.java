@@ -118,8 +118,7 @@ public class LoginPage extends JFrame {
                 signUpLink.setForeground(PRIMARY);
             }
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                dispose();                            // close login
-                new SignUpPage().setVisible(true);    // open sign up
+                LoadingScreen.run(LoginPage.this, () -> new SignUpPage().setVisible(true));
             }
         });
 
@@ -137,8 +136,7 @@ signUpPanel.add(signUpLink);
             }
             if (userManager.verifyLogin(user, pass)) {
                 String fullName = userManager.getFullName(user);
-                dispose();
-                new GuestHouseGUI(fullName).setVisible(true); // pass name to main app
+                LoadingScreen.run(LoginPage.this, () -> new GuestHouseGUI(fullName).setVisible(true));
             } else {
                 errorLabel.setText("Invalid username or password.");
                 passwordField.setText("");

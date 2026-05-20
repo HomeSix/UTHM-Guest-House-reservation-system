@@ -21,6 +21,7 @@ public class GuestReservationSystem {
     }
 
     public void run() {
+        showLoading();
         System.out.println("╔════════════════════════════════════════════════╗");
         System.out.println("║   UTHM Guest House Reservation System          ║");
         System.out.println("║   Group 6 - Software Development Project       ║");
@@ -31,6 +32,7 @@ public class GuestReservationSystem {
             displayMainMenu();
             String choice = getUserInput("Enter your choice (1-7): ");
 
+            if (!choice.equals("7")) showLoading();
             switch (choice) {
                 case "1":
                     addNewReservation();
@@ -381,6 +383,21 @@ public class GuestReservationSystem {
             System.out.println("✓ Room deleted successfully!");
         } else {
             System.out.println("❌ Room not found.");
+        }
+    }
+
+    private void showLoading() {
+        try {
+            System.out.print("Loading");
+            for (int i = 0; i < 3; i++) {
+                System.out.print(".");
+                Thread.sleep(150);
+            }
+            System.out.print("\r");
+            for (int i = 0; i < 10; i++) System.out.print(" ");
+            System.out.print("\r");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

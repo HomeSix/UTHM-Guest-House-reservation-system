@@ -111,7 +111,7 @@ public class GuestHouseGUI extends JFrame {
         menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
         menuPanel.setBackground(BG_WHITE);
 
-        String[] menuItems = {"Dashboard", "Add Reservation", "View All", "Update Status", "Manage Rooms"};
+        String[] menuItems = {"Dashboard", "Add Reservation", "View All", "Manage Rooms"};
         String[] icons = {"◉", "+", "☰", "↻", "◈"};
 
         for (int i = 0; i < menuItems.length; i++) {
@@ -141,8 +141,7 @@ logoutBtn.addActionListener(e -> {
         "Logout", JOptionPane.YES_NO_OPTION
     );
     if (confirm == JOptionPane.YES_OPTION) {
-        dispose();                          // close main window
-        new LoginPage().setVisible(true);   // go back to login
+        LoadingScreen.run(GuestHouseGUI.this, () -> new LoginPage().setVisible(true));
     }
 });
 
@@ -296,9 +295,6 @@ sidebar.add(logoutBtn);
                 break;
             case "View All":
                 showAllReservations();
-                break;
-            case "Update Status":
-                showUpdateStatusDialog();
                 break;
             case "Manage Rooms":
                 showManageRoomsDialog();
@@ -675,24 +671,48 @@ sidebar.add(logoutBtn);
 
         JTextField searchField = createTextField("Search...");
         searchField.setPreferredSize(new Dimension(180, 35));
-        searchField.addActionListener(e -> performSearch(searchTypeCombo, searchField));
+
+        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"Active", "Completed", "Cancelled", "Rejected"});
+        statusCombo.setBackground(BG_WHITE);
+        statusCombo.setForeground(TEXT_DARK);
+        statusCombo.setPreferredSize(new Dimension(180, 35));
+        statusCombo.setVisible(false);
+
+        JPanel inputPanel = new JPanel(new CardLayout());
+        inputPanel.setBackground(BG_LIGHT);
+        inputPanel.add(searchField, "text");
+        inputPanel.add(statusCombo, "status");
+
+        searchTypeCombo.addActionListener(e -> {
+            boolean isStatus = "By Status".equals(searchTypeCombo.getSelectedItem());
+            searchField.setVisible(!isStatus);
+            statusCombo.setVisible(isStatus);
+            inputPanel.revalidate();
+            inputPanel.repaint();
+        });
+
+        searchField.addActionListener(e -> performSearch(searchTypeCombo, searchField, statusCombo));
+        statusCombo.addActionListener(e -> performSearch(searchTypeCombo, searchField, statusCombo));
 
         JButton searchBtn = createActionButton("Search", PRIMARY);
         searchBtn.setPreferredSize(new Dimension(90, 35));
-        searchBtn.addActionListener(e -> performSearch(searchTypeCombo, searchField));
+        searchBtn.addActionListener(e -> performSearch(searchTypeCombo, searchField, statusCombo));
 
         JButton clearBtn = createActionButton("Clear", new Color(100, 116, 139));
         clearBtn.setPreferredSize(new Dimension(90, 35));
         clearBtn.addActionListener(e -> {
             searchTypeCombo.setSelectedIndex(0);
             searchField.setText("");
+            searchField.setVisible(true);
+            statusCombo.setVisible(false);
+            inputPanel.revalidate();
             loadReservations();
         });
 
         searchPanel.add(searchTypeCombo);
-        searchPanel.add(searchField);
-        searchPanel.add(searchBtn);
+        searchPanel.add(inputPanel);
         searchPanel.add(clearBtn);
+        searchPanel.add(searchBtn);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(BG_LIGHT);
@@ -701,21 +721,40 @@ sidebar.add(logoutBtn);
         refreshBtn.addActionListener(e -> {
             searchTypeCombo.setSelectedIndex(0);
             searchField.setText("");
+            searchField.setVisible(true);
+            statusCombo.setVisible(false);
+            inputPanel.revalidate();
             loadReservations();
         });
 
         buttonPanel.add(refreshBtn);
         
-        JButton deleteSelectedBtn = createActionButton("Delete Selected", DANGER);
-        deleteSelectedBtn.setPreferredSize(new Dimension(130, 35));
-        deleteSelectedBtn.addActionListener(e -> deleteSelectedReservations());
-        
-        JButton exportBtn = createActionButton("Export Excel", SUCCESS);
-        exportBtn.setPreferredSize(new Dimension(120, 35));
-        exportBtn.addActionListener(e -> exportToExcel());
+        JButton actionsBtn = createActionButton("Actions ▼", new Color(100, 116, 139));
+        actionsBtn.setPreferredSize(new Dimension(110, 35));
 
-        buttonPanel.add(deleteSelectedBtn);
-        buttonPanel.add(exportBtn);
+        JPopupMenu actionsMenu = new JPopupMenu();
+
+        JMenu updateSub = new JMenu("Update Status");
+        for (String s : new String[]{"Active", "Completed", "Cancelled", "Rejected"}) {
+            JMenuItem item = new JMenuItem(s);
+            String status = s;
+            item.addActionListener(e -> updateSelectedStatus(status));
+            updateSub.add(item);
+        }
+        actionsMenu.add(updateSub);
+        actionsMenu.addSeparator();
+
+        JMenuItem deleteItem = new JMenuItem("Delete Selected");
+        deleteItem.addActionListener(e -> deleteSelectedReservations());
+        actionsMenu.add(deleteItem);
+
+        JMenuItem exportItem = new JMenuItem("Export Excel");
+        exportItem.addActionListener(e -> exportToExcel());
+        actionsMenu.add(exportItem);
+
+        actionsBtn.addActionListener(e -> actionsMenu.show(actionsBtn, 0, actionsBtn.getHeight()));
+
+        buttonPanel.add(actionsBtn);
 
         header.add(headerLabel, BorderLayout.NORTH);
         header.add(searchPanel, BorderLayout.CENTER);
@@ -747,6 +786,42 @@ sidebar.add(logoutBtn);
         reservationTable.setSelectionForeground(TEXT_DARK);
         reservationTable.getColumnModel().getColumn(0).setPreferredWidth(40);
         reservationTable.getColumnModel().getColumn(0).setMaxWidth(40);
+
+        JCheckBox headerCheckBox = new JCheckBox();
+        headerCheckBox.setBackground(PRIMARY);
+        headerCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
+        headerCheckBox.setBorderPainted(false);
+        headerCheckBox.setFocusPainted(false);
+
+        reservationTable.getColumnModel().getColumn(0).setHeaderRenderer(new javax.swing.table.TableCellRenderer() {
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                boolean allChecked = table.getRowCount() > 0;
+                for (int i = 0; i < table.getRowCount(); i++) {
+                    Boolean v = (Boolean) table.getValueAt(i, 0);
+                    if (v == null || !v) { allChecked = false; break; }
+                }
+                headerCheckBox.setSelected(allChecked);
+                return headerCheckBox;
+            }
+        });
+
+        reservationTable.getTableHeader().addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int col = reservationTable.columnAtPoint(e.getPoint());
+                if (col == 0) {
+                    boolean allChecked = tableModel.getRowCount() > 0;
+                    for (int i = 0; i < tableModel.getRowCount(); i++) {
+                        Boolean v = (Boolean) tableModel.getValueAt(i, 0);
+                        if (v == null || !v) { allChecked = false; break; }
+                    }
+                    boolean newVal = !allChecked;
+                    for (int i = 0; i < tableModel.getRowCount(); i++) {
+                        tableModel.setValueAt(newVal, i, 0);
+                    }
+                    reservationTable.getTableHeader().resizeAndRepaint();
+                }
+            }
+        });
 
         JScrollPane scrollPane = new JScrollPane(reservationTable);
         scrollPane.getViewport().setBackground(BG_WHITE);
@@ -786,6 +861,33 @@ sidebar.add(logoutBtn);
         }
     }
 
+    private void updateSelectedStatus(String newStatus) {
+        List<String> toUpdate = new ArrayList<>();
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            Boolean selected = (Boolean) tableModel.getValueAt(i, 0);
+            if (selected != null && selected) {
+                String resId = (String) tableModel.getValueAt(i, 1);
+                toUpdate.add(resId);
+            }
+        }
+
+        if (toUpdate.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please select at least one reservation.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Update " + toUpdate.size() + " reservation(s) to \"" + newStatus + "\"?",
+            "Confirm Update", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            for (String resId : toUpdate) {
+                reservationManager.updateReservationStatus(resId, newStatus);
+            }
+            loadReservations();
+            JOptionPane.showMessageDialog(this, toUpdate.size() + " reservation(s) updated to \"" + newStatus + "\"!");
+        }
+    }
+
     private void exportToExcel() {
         try {
             JFileChooser fileChooser = new JFileChooser();
@@ -814,72 +916,92 @@ sidebar.add(logoutBtn);
         }
     }
 
-    private void performSearch(JComboBox<String> searchTypeCombo, JTextField searchField) {
+    private void performSearch(JComboBox<String> searchTypeCombo, JTextField searchField, JComboBox<String> statusCombo) {
         String type = (String) searchTypeCombo.getSelectedItem();
-        String query = searchField.getText().trim();
+        String query = searchField.getText().trim().toLowerCase();
 
         tableModel.setRowCount(0);
 
-        if (type.equals("All") || query.isEmpty()) {
-            loadReservations();
+        if (type.equals("All")) {
+            List<Reservation> all = reservationManager.getAllReservations();
+            for (Reservation res : all) {
+                if (query.isEmpty() ||
+                    res.getReservationId().toLowerCase().contains(query) ||
+                    res.getGuest().getName().toLowerCase().contains(query) ||
+                    res.getRoom().getRoomNumber().toLowerCase().contains(query) ||
+                    res.getStatus().toLowerCase().contains(query)) {
+                    addReservationRow(res);
+                }
+            }
+            if (reservationTable != null) {
+                reservationTable.getTableHeader().resizeAndRepaint();
+            }
             return;
         }
+
+        if (query.isEmpty() && !type.equals("By Status")) return;
 
         List<Reservation> results = new ArrayList<>();
 
         switch (type) {
             case "By Reservation ID":
-                Reservation r = reservationManager.findReservationById(query);
-                if (r != null) results.add(r);
+                for (Reservation r : reservationManager.getAllReservations()) {
+                    if (r.getReservationId().toLowerCase().contains(query)) {
+                        results.add(r);
+                    }
+                }
                 break;
             case "By Guest Name":
                 results = reservationManager.getReservationsByGuestName(query);
                 break;
             case "By Room Number":
-                results = reservationManager.getReservationsByRoom(query);
+                for (Reservation r : reservationManager.getAllReservations()) {
+                    if (r.getRoom().getRoomNumber().toLowerCase().contains(query)) {
+                        results.add(r);
+                    }
+                }
                 break;
             case "By Status":
-                results = reservationManager.getReservationsByStatus(query);
+                String status = (String) statusCombo.getSelectedItem();
+                results = reservationManager.getReservationsByStatus(status);
                 break;
         }
 
         for (Reservation res : results) {
-            Object[] row = {
-                false,
-                res.getReservationId(),
-                res.getGuest().getName(),
-                res.getRoom().getRoomNumber(),
-                res.getCheckInDate(),
-                res.getCheckOutDate(),
-                res.getNumberOfNights(),
-                String.format("%.2f", res.getTotalCost()),
-                res.getStatus()
-            };
-            tableModel.addRow(row);
+            addReservationRow(res);
         }
+        if (reservationTable != null) {
+            reservationTable.getTableHeader().resizeAndRepaint();
+        }
+    }
+
+    private void addReservationRow(Reservation res) {
+        String roomNumber = res.getRoom().getRoomNumber();
+        Room actualRoom = roomManager.findRoomByNumber(roomNumber);
+        String displayRoom = actualRoom != null ? actualRoom.getRoomNumber() : roomNumber;
+
+        Object[] row = {
+            false,
+            res.getReservationId(),
+            res.getGuest().getName(),
+            displayRoom,
+            res.getCheckInDate(),
+            res.getCheckOutDate(),
+            res.getNumberOfNights(),
+            String.format("%.2f", res.getTotalCost()),
+            res.getStatus()
+        };
+        tableModel.addRow(row);
     }
 
     private void loadReservations() {
         if (tableModel != null) {
             tableModel.setRowCount(0);
-            List<Reservation> reservations = reservationManager.getAllReservations();
-            for (Reservation res : reservations) {
-                String roomNumber = res.getRoom().getRoomNumber();
-                Room actualRoom = roomManager.findRoomByNumber(roomNumber);
-                String displayRoom = actualRoom != null ? actualRoom.getRoomNumber() : roomNumber;
-                
-                Object[] row = {
-                    false,
-                    res.getReservationId(),
-                    res.getGuest().getName(),
-                    displayRoom,
-                    res.getCheckInDate(),
-                    res.getCheckOutDate(),
-                    res.getNumberOfNights(),
-                    String.format("%.2f", res.getTotalCost()),
-                    res.getStatus()
-                };
-                tableModel.addRow(row);
+            for (Reservation res : reservationManager.getAllReservations()) {
+                addReservationRow(res);
+            }
+            if (reservationTable != null) {
+                reservationTable.getTableHeader().resizeAndRepaint();
             }
         }
     }
